@@ -1,37 +1,20 @@
-"""
-Core Sudoku CSP Solver
-Implements backtracking search with:
-- MRV (Minimum Remaining Values) heuristic
-- LCV (Least Constraining Value) heuristic
-- Forward Checking constraint propagation
-"""
-
+from __future__ import annotations
+from typing import Iterator
 import numpy as np
 
 
 class SudokuCSP:
-    """
-    Constraint Satisfaction Problem solver for Sudoku.
     
-    Variables: Empty cells represented as (row, col) tuples
-    Domains: Numbers 1-9 for each empty cell
-    Constraints: No duplicates in row, column, or 3x3 box
-    """
-    
-    def __init__(self, size=9, initial_board=None):
-        """
-        Initialize Sudoku CSP solver.
-        
-        Args:
-            size: Board size (9 for standard 9x9 Sudoku)
-            initial_board: 2D list with 0 for empty cells, 1-9 for filled cells
-        """
+    def __init__(self, size: int = 9, initial_board: list[list[int]] | None = None) -> None:
         self.size = size
         self.box_size = int(np.sqrt(size))  # 3 for 9x9 Sudoku
         
+        if self.box_size * self.box_size != size:
+            raise ValueError(f"Size must be a perfect square, got {size}")
+        
         # Variables are (row, col) tuples for empty cells
-        self.variables = []
-        self.initial_domains = {}
+        self.variables: list[tuple[int, int]] = []
+        self.initial_domains: dict[tuple[int, int], list[int]] = {}
         
         # Initialize board
         if initial_board is None:
@@ -55,40 +38,31 @@ class SudokuCSP:
         
         self.reset()
     
-    def _remove_conflicts(self, row, col, value, domains):
-        """
-        Remove value from domains of cells in same row, column, and box.
-        
-        Args:
-            row: Row index
-            col: Column index
-            value: Value to remove
-            domains: Domain dictionary to update
-        """
+    def _remove_conflicts(
+        self, 
+        row: int, 
+        col: int, 
+        value: int, 
+        domains: dict[tuple[int, int], list[int]]
+    ) -> None:
         for (r, c) in list(domains.keys()):
             if r == row or c == col or (r // self.box_size == row // self.box_size and 
                                         c // self.box_size == col // self.box_size):
                 if value in domains[(r, c)]:
                     domains[(r, c)].remove(value)
     
-    def reset(self):
-        """Reset solver statistics"""
-        self.nodes = 0
-        self.backtracks = 0
-        self.solutions = 0
+    def reset(self) -> None:
+        """Reset solver statistics."""
+        self.nodes: int = 0
+        self.backtracks: int = 0
+        self.solutions: int = 0
     
-    def is_consistent(self, var, value, assignment):
-        """
-        Check if assigning value to var is consistent with current assignment.
-        
-        Args:
-            var: Variable (row, col) tuple
-            value: Value to assign
-            assignment: Current assignment dictionary
-            
-        Returns:
-            True if consistent, False otherwise
-        """
+    def is_consistent(
+        self, 
+        var: tuple[int, int], 
+        value: int, 
+        assignment: dict[tuple[int, int], int]
+    ) -> bool:
         row, col = var
         
         # Check row constraint
@@ -111,33 +85,20 @@ class SudokuCSP:
         
         return True
     
-    def select_unassigned_var(self, domains, assignment):
-        """
-        Select next variable using MRV (Minimum Remaining Values) heuristic.
-        Ties broken by degree (most constraining variable).
-        
-        Args:
-            domains: Current domain dictionary
-            assignment: Current assignment dictionary
-            
-        Returns:
-            Variable (row, col) tuple with smallest domain
-        """
+    # MRV heuristic
+    def select_unassigned_var(
+        self, 
+        domains: dict[tuple[int, int], list[int]], 
+        assignment: dict[tuple[int, int], int]
+    ) -> tuple[int, int]:
         unassigned = [v for v in self.variables if v not in assignment]
         return min(unassigned, key=lambda v: (len(domains[v]), -self._count_constraints(v, assignment)))
     
-    def _count_constraints(self, var, assignment):
-        """
-        Count how many unassigned variables this variable constrains.
-        Used for degree heuristic tie-breaking.
-        
-        Args:
-            var: Variable (row, col) tuple
-            assignment: Current assignment dictionary
-            
-        Returns:
-            Number of constraints
-        """
+    def _count_constraints(
+        self, 
+        var: tuple[int, int], 
+        assignment: dict[tuple[int, int], int]
+    ) -> int:
         row, col = var
         count = 0
         for (r, c) in self.variables:
@@ -147,20 +108,14 @@ class SudokuCSP:
                     count += 1
         return count
     
-    def order_domain_values(self, var, domains, assignment):
-        """
-        Order domain values using LCV (Least Constraining Value) heuristic.
-        Values that rule out fewer choices for neighbors are tried first.
-        
-        Args:
-            var: Variable (row, col) tuple
-            domains: Current domain dictionary
-            assignment: Current assignment dictionary
-            
-        Returns:
-            Ordered list of values to try
-        """
-        def eliminated_count(value):
+    # LCV heuristic
+    def order_domain_values(
+        self, 
+        var: tuple[int, int], 
+        domains: dict[tuple[int, int], list[int]], 
+        assignment: dict[tuple[int, int], int]
+    ) -> list[int]:
+        def eliminated_count(value: int) -> int:
             count = 0
             row, col = var
             for (r, c) in self.variables:
@@ -176,22 +131,14 @@ class SudokuCSP:
         values.sort(key=eliminated_count)
         return values
     
-    def forward_check(self, var, value, domains):
-        """
-        Apply forward checking: remove inconsistent values from neighboring domains.
-        
-        Args:
-            var: Variable (row, col) tuple
-            value: Value being assigned
-            domains: Current domain dictionary
-            
-        Returns:
-            (new_domains, removed) tuple where:
-                - new_domains is updated domains dict (or None if failure)
-                - removed is dict of values removed from each domain
-        """
+    def forward_check(
+        self, 
+        var: tuple[int, int], 
+        value: int, 
+        domains: dict[tuple[int, int], list[int]]
+    ) -> tuple[dict[tuple[int, int], list[int]] | None, dict[tuple[int, int], list[int]]]:
         new_domains = {v: list(domains[v]) for v in domains}
-        removed = {v: [] for v in domains}
+        removed: dict[tuple[int, int], list[int]] = {v: [] for v in domains}
         new_domains[var] = [value]
         
         row, col = var
@@ -213,18 +160,11 @@ class SudokuCSP:
         
         return new_domains, removed
     
-    def backtrack_generator(self, domains=None, assignment=None):
-        """
-        Backtracking search with generator for step-by-step visualization.
-        Yields events that can be consumed by the GUI for visualization.
-        
-        Args:
-            domains: Current domain dictionary (or None to use initial)
-            assignment: Current assignment dictionary (or None for empty)
-            
-        Yields:
-            Tuples representing events: ('event_type', data...)
-        """
+    def backtrack_generator(
+        self, 
+        domains: dict[tuple[int, int], list[int]] | None = None, 
+        assignment: dict[tuple[int, int], int] | None = None
+    ) -> Iterator[tuple[str, ...]]:
         if domains is None:
             domains = {v: list(self.initial_domains[v]) for v in self.variables}
         if assignment is None:
@@ -271,8 +211,7 @@ class SudokuCSP:
             yield ('fc_ok', var, value, removed)
             
             # Recursively solve
-            for e in self.backtrack_generator(new_domains, assignment):
-                yield e
+            yield from self.backtrack_generator(new_domains, assignment)
             
             # Backtrack
             del assignment[var]
