@@ -1,9 +1,12 @@
-"""
-Predefined Sudoku puzzles for testing
-0 represents empty cells
-"""
+from __future__ import annotations
+from typing import Literal
 
-EASY_PUZZLE = [
+# Type alias for puzzle board
+PuzzleBoard = list[list[int]]
+DifficultyType = Literal['Easy', 'Medium', 'Hard']
+
+
+EASY_PUZZLE: PuzzleBoard = [
     [5, 3, 0, 0, 7, 0, 0, 0, 0],
     [6, 0, 0, 1, 9, 5, 0, 0, 0],
     [0, 9, 8, 0, 0, 0, 0, 6, 0],
@@ -15,7 +18,7 @@ EASY_PUZZLE = [
     [0, 0, 0, 0, 8, 0, 0, 7, 9]
 ]
 
-EASY_PUZZLE_2 = [
+EASY_PUZZLE_2: PuzzleBoard = [
     [0, 0, 0, 2, 6, 0, 7, 0, 1],
     [6, 8, 0, 0, 7, 0, 0, 9, 0],
     [1, 9, 0, 0, 0, 4, 5, 0, 0],
@@ -27,7 +30,7 @@ EASY_PUZZLE_2 = [
     [7, 0, 3, 0, 1, 8, 0, 0, 0]
 ]
 
-MEDIUM_PUZZLE = [
+MEDIUM_PUZZLE: PuzzleBoard = [
     [0, 0, 0, 6, 0, 0, 4, 0, 0],
     [7, 0, 0, 0, 0, 3, 6, 0, 0],
     [0, 0, 0, 0, 9, 1, 0, 8, 0],
@@ -39,7 +42,7 @@ MEDIUM_PUZZLE = [
     [0, 2, 0, 0, 0, 0, 1, 0, 0]
 ]
 
-MEDIUM_PUZZLE_2 = [
+MEDIUM_PUZZLE_2: PuzzleBoard = [
     [0, 2, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 6, 0, 0, 0, 0, 3],
     [0, 7, 4, 0, 8, 0, 0, 0, 0],
@@ -51,7 +54,7 @@ MEDIUM_PUZZLE_2 = [
     [0, 0, 0, 0, 0, 0, 0, 4, 0]
 ]
 
-HARD_PUZZLE = [
+HARD_PUZZLE: PuzzleBoard = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 3, 0, 8, 5],
     [0, 0, 1, 0, 2, 0, 0, 0, 0],
@@ -63,25 +66,16 @@ HARD_PUZZLE = [
     [0, 0, 0, 0, 4, 0, 0, 0, 9]
 ]
 
-PUZZLES = {
+PUZZLES: dict[str, list[PuzzleBoard]] = {
     'Easy': [EASY_PUZZLE, EASY_PUZZLE_2],
     'Medium': [MEDIUM_PUZZLE, MEDIUM_PUZZLE_2],
     'Hard': [HARD_PUZZLE]
 }
 
 
-def get_puzzle(difficulty='Easy', index=0):
-    """
-    Get a puzzle by difficulty and index.
-    
-    Args:
-        difficulty: 'Easy', 'Medium', or 'Hard'
-        index: Index of puzzle in that difficulty category
-        
-    Returns:
-        2D list representing the puzzle board
-    """
+def get_puzzle(difficulty: str = 'Easy', index: int = 0) -> PuzzleBoard:
     puzzles = PUZZLES.get(difficulty, PUZZLES['Easy'])
     if index >= len(puzzles):
         index = 0
-    return puzzles[index]
+    # Return a copy to prevent mutation of original
+    return [row[:] for row in puzzles[index]]
